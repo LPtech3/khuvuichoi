@@ -3,430 +3,398 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklist Công Viên - Nhà Phao & Xe Điện</title>
+    <title>Hệ thống Checklist Công Viên (Real-time Demo)</title>
     <style>
         :root {
             --primary: #2563eb;
-            --secondary: #475569;
             --bg: #f1f5f9;
-            --white: #ffffff;
             --success: #22c55e;
-            --border: #e2e8f0;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text: #1e293b;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); min-height: 100vh; color: var(--text); }
 
-        body { background-color: var(--bg); min-height: 100vh; display: flex; flex-direction: column; }
-
-        /* --- Login Styles --- */
-        .login-container {
-            display: flex; justify-content: center; align-items: center; height: 100vh;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+        /* --- LOGIN --- */
+        .login-wrap {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex; justify-content: center; align-items: center; z-index: 1000;
         }
         .login-box {
-            background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            background: white; padding: 2rem; border-radius: 1rem; width: 90%; max-width: 400px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
         }
-        .login-title { text-align: center; margin-bottom: 1.5rem; color: #1e293b; }
         .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
-        .form-control {
-            width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 0.5rem;
-            font-size: 1rem; transition: border-color 0.2s;
+        .form-input {
+            width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem;
+            margin-top: 0.5rem;
         }
-        .form-control:focus { outline: none; border-color: var(--primary); }
-        .btn-primary {
-            width: 100%; padding: 0.75rem; background: var(--primary); color: white; border: none;
-            border-radius: 0.5rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+        .btn {
+            width: 100%; padding: 0.75rem; border: none; border-radius: 0.5rem;
+            font-weight: bold; cursor: pointer; transition: 0.2s;
         }
-        .btn-primary:hover { opacity: 0.9; }
-        .login-note { margin-top: 1rem; font-size: 0.85rem; color: var(--secondary); background: #f8fafc; padding: 10px; border-radius: 5px; }
-        .error { color: #ef4444; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
-
-        /* --- Dashboard Styles --- */
-        .dashboard { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        
+        /* --- DASHBOARD --- */
+        .dashboard { display: none; padding: 20px; max-width: 800px; margin: 0 auto; }
         .header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
-            background: white; padding: 15px 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .user-profile { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 40px; height: 40px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .btn-logout { padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .badge {
+            padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;
+        }
+        .badge-admin { background: #dbeafe; color: #1e40af; }
+        .badge-staff { background: #f3f4f6; color: #1f2937; }
 
-        .controls { margin-bottom: 20px; display: flex; gap: 15px; align-items: center; background: white; padding: 15px; border-radius: 10px; }
-        
-        /* Checklist Styles */
-        .checklist-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .card-header { background: #f8fafc; padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: bold; color: #1e293b; display: flex; justify-content: space-between; }
-        .task-list { list-style: none; }
-        .task-item { 
-            padding: 15px 20px; border-bottom: 1px solid var(--border); 
-            display: flex; flex-direction: column; gap: 10px;
+        /* --- CHECKLIST --- */
+        .card { background: white; border-radius: 10px; overflow: hidden; margin-bottom: 15px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .card-head {
+            padding: 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .task-item:last-child { border-bottom: none; }
-        
-        .task-header { display: flex; align-items: flex-start; gap: 12px; }
-        .task-checkbox { width: 20px; height: 20px; margin-top: 3px; cursor: pointer; }
-        .task-content { flex: 1; }
-        .task-time { font-weight: bold; color: var(--primary); font-size: 0.9rem; display: block; margin-bottom: 4px; }
-        .task-desc { color: #334155; line-height: 1.4; }
-        
-        .task-input { 
-            margin-left: 32px; 
-            display: flex; 
-            gap: 10px; 
+        .task-item {
+            padding: 15px; border-bottom: 1px solid #f1f5f9;
+            display: flex; flex-direction: column; gap: 8px;
         }
-        .input-data { 
-            flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 0.9rem; 
+        .task-row { display: flex; gap: 10px; align-items: flex-start; }
+        .task-check { width: 20px; height: 20px; margin-top: 2px; cursor: pointer; }
+        .task-time { font-weight: bold; color: var(--primary); font-size: 0.9rem; display: block; }
+        .task-input {
+            width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 0.9rem;
         }
 
-        /* Manager View Grid */
-        .manager-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        /* --- MANAGER VIEW --- */
+        .monitor-grid { display: grid; gap: 15px; }
+        .monitor-card { background: white; padding: 15px; border-radius: 10px; border-left: 5px solid #ccc; }
+        .monitor-card.done { border-left-color: var(--success); }
+        .monitor-card.pending { border-left-color: var(--warning); }
         
-        .progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 5px; overflow: hidden; width: 100px; }
-        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .bg-green { background: var(--success); }
+        .bg-gray { background: #cbd5e1; }
 
-        @media (max-width: 768px) {
-            .manager-grid { grid-template-columns: 1fr; }
-            .task-input { margin-left: 0; }
+        /* --- SUBMIT BUTTON --- */
+        .submit-area { margin-top: 20px; padding: 20px; background: white; border-radius: 10px; text-align: center; }
+        .btn-submit { 
+            background: var(--success); color: white; padding: 12px 24px; font-size: 1rem; 
+            display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 auto;
         }
+        .btn-submit:disabled { background: #9ca3af; cursor: not-allowed; }
+        .submitted-alert {
+            background: #dcfce7; color: #166534; padding: 10px; border-radius: 5px; margin-top: 10px; display: none;
+        }
+
     </style>
 </head>
 <body>
 
-    <div id="loginScreen" class="login-container">
+    <div id="loginScreen" class="login-wrap">
         <div class="login-box">
-            <h2 class="login-title">🔐 Đăng nhập Hệ thống</h2>
-            <div id="loginError" class="error">Sai tên đăng nhập hoặc mật khẩu!</div>
+            <h2 style="text-align: center; margin-bottom: 20px;">🔐 Hệ thống Công Viên</h2>
             <div class="form-group">
                 <label>Tên đăng nhập</label>
-                <input type="text" id="username" class="form-control" placeholder="Nhập username...">
+                <input type="text" id="uName" class="form-input" placeholder="admin, nam_np, nu_xd...">
             </div>
             <div class="form-group">
                 <label>Mật khẩu</label>
-                <input type="password" id="password" class="form-control" placeholder="Nhập mật khẩu...">
+                <input type="password" id="pWord" class="form-input" value="123">
             </div>
-            <button class="btn-primary" onclick="login()">Đăng nhập</button>
-
-            <div class="login-note">
-                <strong>Tài khoản mặc định (User/Pass):</strong><br>
-                👮 Quản lý: <code>admin</code> / <code>123</code><br>
-                ------------<br>
-                🧔 Nam Nhà Phao: <code>nam_np</code> / <code>123</code><br>
-                👩 Nữ Nhà Phao: <code>nu_np</code> / <code>123</code><br>
-                ------------<br>
-                🧔 Nam Xe Điện: <code>nam_xd</code> / <code>123</code><br>
-                👩 Nữ Xe Điện: <code>nu_xd</code> / <code>123</code>
-            </div>
+            <button class="btn btn-primary" onclick="login()">Đăng Nhập</button>
+            <p style="margin-top: 15px; font-size: 0.8rem; color: #666; text-align: center;">
+                Mặc định: admin, nam_np, nu_np, nam_xd, nu_xd (Pass: 123)
+            </p>
         </div>
     </div>
 
     <div id="dashboard" class="dashboard">
         <div class="header">
-            <div class="user-profile">
-                <div class="avatar" id="userAvatar">A</div>
-                <div>
-                    <div style="font-weight: bold;" id="userName">Quản trị viên</div>
-                    <div style="font-size: 0.85rem; color: #64748b;" id="userRole">Manager</div>
-                </div>
+            <div>
+                <h3 id="uiName">Xin chào</h3>
+                <span id="uiRole" class="badge badge-staff">Staff</span>
             </div>
-            <button class="btn-logout" onclick="logout()">Đăng xuất</button>
+            <button onclick="logout()" style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 5px; cursor: pointer;">Đăng xuất</button>
         </div>
 
-        <div class="controls">
-            <label style="font-weight: 500;">📅 Xem dữ liệu ngày:</label>
-            <input type="date" id="datePicker" class="form-control" style="width: auto;" onchange="handleDateChange()">
+        <div style="background: white; padding: 10px; margin-bottom: 15px; border-radius: 10px; display: flex; align-items: center; gap: 10px;">
+            <label>📅 Ngày làm việc:</label>
+            <input type="date" id="datePicker" style="padding: 5px; border-radius: 5px; border: 1px solid #ccc;" onchange="changeDate()">
         </div>
 
-        <div id="contentArea">
-            </div>
+        <div id="contentArea"></div>
     </div>
 
     <script>
-        // 1. CẤU HÌNH DỮ LIỆU CHECKLIST (Lấy từ file docx)
-        const CHECKLIST_DATA = {
+        // DỮ LIỆU CẤU HÌNH
+        const TASKS = {
             nam_np: {
-                title: "Nam Khu Nhà Phao",
-                tasks: [
-                    { time: "15:30", desc: "Có mặt tại kho và check in" },
-                    { time: "15:30 - 16:00", desc: "Phụ dọn xe và dụng cụ ra điểm tập trung" },
-                    { time: "16:00", desc: "Gỡ tấm bạc trùm nhà phao, dán kín 3 ống thoát khí, nối ống còn lại vào máy bơm" },
-                    { time: "16:00 - 16:30", desc: "Gỡ bạt trùm hồ câu cá, lau dọn bên trong, bơm nước, thả cá. (Lưu ý: Lau khô ghế, cuộn ống nước)" },
-                    { time: "Khi đầy hơi", desc: "Lau dọn nhà hơi sạch sẽ (lau ướt rồi dùng máy thổi khô)" },
-                    { time: "17:30", desc: "Treo đèn lên nhà phao và hồ cá" },
-                    { time: "18:30 - 19:00", desc: "Đi xung quanh khu vực chơi nhặt rác sạch sẽ (1 người ở lại giữ thùng tiền)" },
-                    { time: "20:00 - 20:30", desc: "Chờ khách chơi xong: Xả nhà phao + Gấp lại + Kéo bạt che lên" },
-                    { time: "20:30", desc: "Dọn hồ cá cất đồ + Kéo bạt che lên (đi nhặt rác lần nữa)" },
-                    { time: "Cuối ca", desc: "Kiểm nước chụp hình số lượng báo lên Group", hasInput: true, placeholder: "Nhập số nước/Link ảnh..." },
-                    { time: "Cuối ca", desc: "Rút dây điện nhà phao + Tắt đèn Công Viên" },
-                    { time: "Cuối ca", desc: "Ra phụ khu xe điện dọn kéo xe về" },
-                    { time: "21:00", desc: "Check out (Chụp hình đồng hồ nước + khoá nước)", hasInput: true, placeholder: "Số đồng hồ nước..." }
+                title: "👨 Nam Nhà Phao",
+                items: [
+                    { t: "15:30", d: "Có mặt, check in, dọn xe ra điểm tập trung" },
+                    { t: "16:00", d: "Gỡ bạt nhà phao, dán 3 ống, nối máy bơm" },
+                    { t: "16:00", d: "Dọn hồ cá, bơm nước, thả cá (lau khô ghế)" },
+                    { t: "Khi đầy", d: "Lau dọn nhà hơi (lau ướt -> thổi khô)" },
+                    { t: "17:30", d: "Treo đèn nhà phao và hồ cá" },
+                    { t: "18:30", d: "Nhặt rác sạch sẽ xung quanh" },
+                    { t: "20:00", d: "Xả nhà phao, gấp lại, kéo bạt che" },
+                    { t: "20:30", d: "Dọn hồ cá, cất đồ, kéo bạt" },
+                    { t: "Cuối ca", d: "Chụp hình số nước báo Group", input: true },
+                    { t: "Cuối ca", d: "Rút điện, tắt đèn công viên" },
+                    { t: "Cuối ca", d: "Phụ khu xe điện kéo xe về" },
+                    { t: "21:00", d: "Check out (Chụp đồng hồ nước)", input: true }
                 ]
             },
             nu_np: {
-                title: "Nữ Khu Nhà Phao",
-                tasks: [
-                    { time: "15:30", desc: "Có mặt tại kho và check in" },
-                    { time: "15:30", desc: "Phụ dọn xe và dụng cụ ra điểm tập trung" },
-                    { time: "Đầu ca", desc: "Đi xung quanh khu vực nhặt rác sạch sẽ" },
-                    { time: "Đầu ca", desc: "Kiểm kê số nước đầu ca nhắn lên Group", hasInput: true, placeholder: "Số lượng nước đầu ca..." },
-                    { time: "18:00", desc: "Đốt nhang muỗi cho khách" },
-                    { time: "18:30 - 19:00", desc: "Đi xung quanh khu vực chơi nhặt rác sạch sẽ (1 người ở lại giữ thùng tiền)" },
-                    { time: "20:00 - 20:30", desc: "Chờ khách chơi xong: Xả nhà phao + Gấp lại + Kéo bạt che lên" },
-                    { time: "20:30", desc: "Dọn hồ cá cất đồ + Kéo bạt che lên (nhặt rác lần nữa)" },
-                    { time: "Cuối ca", desc: "Kiểm kê số nước cuối ca nhắn group", hasInput: true, placeholder: "Số lượng nước cuối ca..." },
-                    { time: "Cuối ca", desc: "Ra phụ khu xe điện dọn kéo xe về" },
-                    { time: "Cuối ca", desc: "Sạc pin đèn và bộ đàm" },
-                    { time: "21:00", desc: "Check out sau khi xong việc" }
+                title: "👩 Nữ Nhà Phao",
+                items: [
+                    { t: "15:30", d: "Check in, phụ dọn xe ra điểm tập trung" },
+                    { t: "Đầu ca", d: "Nhặt rác, kiểm kê nước đầu ca", input: true },
+                    { t: "18:00", d: "Đốt nhang muỗi" },
+                    { t: "18:30", d: "Đi nhặt rác, giữ thùng tiền" },
+                    { t: "20:00", d: "Phụ dọn nhà phao, hồ cá, kéo bạt" },
+                    { t: "Cuối ca", d: "Kiểm kê nước cuối ca", input: true },
+                    { t: "Cuối ca", d: "Sạc đèn, bộ đàm" },
+                    { t: "21:00", d: "Check out" }
                 ]
             },
             nam_xd: {
-                title: "Nam Khu Xe Điện",
-                tasks: [
-                    { time: "15:30", desc: "Có mặt tại kho và check in" },
-                    { time: "Trước 16:30", desc: "Dọn xe ra địa điểm tập trung" },
-                    { time: "Chiều", desc: "Để cọc phân luồng ra nơi chỉ định" },
-                    { time: "17:00", desc: "Giăng dây và bật nhạc" },
-                    { time: "Tối", desc: "Bật đèn và để đèn khu trung tâm khi trời tối" },
-                    { time: "18:00", desc: "Đốt nhang muỗi cho khách" },
-                    { time: "18:30 - 19:00", desc: "Đi xung quanh khu vực chơi nhặt rác sạch sẽ (1 người giữ thùng tiền)" },
-                    { time: "20:00 - 20:30", desc: "Chờ khách xong, dọn xe và dụng cụ về kho + Dọn bạt (Nhặt rác lần nữa)" },
-                    { time: "Cuối ca", desc: "Sạc pin Xe" },
-                    { time: "Cuối ca", desc: "Sạc đèn, loa, máy in, bộ đàm, máy tính bảng" },
-                    { time: "Cuối ca", desc: "Trùm xe đẩy lại và cất xe" },
-                    { time: "21:00", desc: "Check out sau khi xong việc" }
+                title: "👨 Nam Xe Điện",
+                items: [
+                    { t: "15:30", d: "Check in, dọn xe ra (trước 16:30)" },
+                    { t: "Chiều", d: "Để cọc phân luồng, giăng dây, bật nhạc" },
+                    { t: "Tối", d: "Bật đèn khu trung tâm" },
+                    { t: "18:00", d: "Đốt nhang muỗi" },
+                    { t: "18:30", d: "Nhặt rác xung quanh" },
+                    { t: "20:00", d: "Dọn xe về kho, dọn bạt" },
+                    { t: "Cuối ca", d: "Sạc Pin xe, đèn, loa, bộ đàm" },
+                    { t: "21:00", d: "Check out, trùm xe cất kho" }
                 ]
             },
             nu_xd: {
-                title: "Nữ Khu Xe Điện",
-                tasks: [
-                    { time: "16:00", desc: "Có mặt tại kho và check in" },
-                    { time: "Trước 16:30", desc: "Phụ dọn xe ra điểm tập trung" },
-                    { time: "Chiều", desc: "Lau dọn xe và nhặt rác xung quanh khu vực" },
-                    { time: "Đầu ca", desc: "Kiểm tra tiền lẻ, máy in hóa đơn, máy tính bảng, bộ đàm" },
-                    { time: "Đầu ca", desc: "Báo số đeo vòng tay đầu ca", hasInput: true, placeholder: "Số vòng tay..." },
-                    { time: "Đầu ca", desc: "Kiểm kê số nước đầu ca nhắn group", hasInput: true, placeholder: "Số nước..." },
-                    { time: "18:00", desc: "Đốt nhang muỗi cho khách" },
-                    { time: "18:30 - 19:00", desc: "Đi xung quanh khu vực chơi nhặt rác sạch sẽ (1 người giữ thùng tiền)" },
-                    { time: "20:00 - 20:30", desc: "Chờ khách xong, dọn xe và dụng cụ về kho (Nhặt rác lần nữa)" },
-                    { time: "Cuối ca", desc: "Báo số đeo vòng tay cuối ca", hasInput: true, placeholder: "Số vòng tay..." },
-                    { time: "Cuối ca", desc: "Kiểm kê số nước cuối ca nhắn group", hasInput: true, placeholder: "Số nước..." },
-                    { time: "Cuối ca", desc: "Sạc pin Xe, đèn, loa, máy in, bộ đàm..." },
-                    { time: "21:00", desc: "Check out sau khi xong việc" }
+                title: "👩 Nữ Xe Điện",
+                items: [
+                    { t: "16:00", d: "Check in, phụ dọn xe, lau xe" },
+                    { t: "Đầu ca", d: "Kiểm tiền lẻ, máy in, bộ đàm" },
+                    { t: "Đầu ca", d: "Báo số vòng tay + Nước", input: true },
+                    { t: "18:00", d: "Đốt nhang muỗi" },
+                    { t: "18:30", d: "Nhặt rác, giữ thùng tiền" },
+                    { t: "20:00", d: "Dọn xe về kho" },
+                    { t: "Cuối ca", d: "Báo số vòng tay + Nước cuối ca", input: true },
+                    { t: "Cuối ca", d: "Sạc pin các thiết bị" },
+                    { t: "21:00", d: "Check out" }
                 ]
             }
         };
 
-        // 2. TÀI KHOẢN
-        const ACCOUNTS = {
-            'admin': { pass: '123', name: 'Quản Lý', role: 'admin' },
-            'nam_np': { pass: '123', name: 'Nhân Viên Nam', role: 'nam_np' },
-            'nu_np': { pass: '123', name: 'Nhân Viên Nữ', role: 'nu_np' },
-            'nam_xd': { pass: '123', name: 'Nhân Viên Nam', role: 'nam_xd' },
-            'nu_xd': { pass: '123', name: 'Nhân Viên Nữ', role: 'nu_xd' }
+        const USERS = {
+            admin: { name: "Quản Trị Viên", role: "admin" },
+            nam_np: { name: "Nhân viên Nam (Nhà Phao)", role: "nam_np" },
+            nu_np: { name: "Nhân viên Nữ (Nhà Phao)", role: "nu_np" },
+            nam_xd: { name: "Nhân viên Nam (Xe Điện)", role: "nam_xd" },
+            nu_xd: { name: "Nhân viên Nữ (Xe Điện)", role: "nu_xd" }
         };
 
         let currentUser = null;
+        let currentDate = new Date().toISOString().split('T')[0];
 
         // --- HÀM HỆ THỐNG ---
-
         function init() {
-            // Set date picker to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('datePicker').value = today;
+            document.getElementById('datePicker').value = currentDate;
             
-            // Check login session (optional, for demo we skip auto-login)
+            // Lắng nghe sự kiện thay đổi localStorage (Real-time giữa các tab)
+            window.addEventListener('storage', () => {
+                if (currentUser) changeDate(); // Tự động tải lại khi có dữ liệu mới
+            });
         }
 
         function login() {
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            const errorDiv = document.getElementById('loginError');
-
-            if (ACCOUNTS[u] && ACCOUNTS[u].pass === p) {
-                currentUser = ACCOUNTS[u];
-                currentUser.username = u; // Lưu lại key
+            const u = document.getElementById('uName').value;
+            const p = document.getElementById('pWord').value;
+            if (USERS[u] && p === '123') {
+                currentUser = USERS[u];
+                currentUser.username = u;
+                
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
-                document.getElementById('userName').innerText = currentUser.name;
-                document.getElementById('userRole').innerText = CHECKLIST_DATA[currentUser.role]?.title || "Quản Trị Viên";
-                document.getElementById('userAvatar').innerText = currentUser.name.charAt(0);
-                errorDiv.style.display = 'none';
                 
-                handleDateChange(); // Load data ngay
+                document.getElementById('uiName').innerText = currentUser.name;
+                document.getElementById('uiRole').innerText = currentUser.role === 'admin' ? 'Admin' : 'Nhân viên';
+                document.getElementById('uiRole').className = currentUser.role === 'admin' ? 'badge badge-admin' : 'badge badge-staff';
+                
+                changeDate();
             } else {
-                errorDiv.style.display = 'block';
+                alert("Sai tên đăng nhập hoặc mật khẩu!");
             }
         }
 
         function logout() {
-            currentUser = null;
-            document.getElementById('dashboard').style.display = 'none';
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
+            location.reload();
         }
 
-        // Tạo key cho LocalStorage: data_YYYY-MM-DD_role
-        function getDataKey(date, role) {
-            return `data_${date}_${role}`;
-        }
-
-        function loadData(date, role) {
-            const key = getDataKey(date, role);
-            const json = localStorage.getItem(key);
-            return json ? JSON.parse(json) : {};
-        }
-
-        function saveData(date, role, index, type, value) {
-            const key = getDataKey(date, role);
-            let data = loadData(date, role);
-            
-            if (!data[index]) data[index] = {};
-            data[index][type] = value; // type là 'done' (checked) hoặc 'note' (text)
-
-            localStorage.setItem(key, JSON.stringify(data));
-            
-            // Nếu là admin đang xem, cần refresh lại giao diện để cập nhật thanh progress
-            if(currentUser.role === 'admin') {
-                updateProgressUI(role, data);
-            }
-        }
-
-        function handleDateChange() {
-            const date = document.getElementById('datePicker').value;
-            const contentArea = document.getElementById('contentArea');
-            contentArea.innerHTML = ''; // Clear cũ
+        function changeDate() {
+            currentDate = document.getElementById('datePicker').value;
+            const area = document.getElementById('contentArea');
+            area.innerHTML = '';
 
             if (currentUser.role === 'admin') {
-                renderManagerView(date);
+                renderAdminView(area);
+                // Auto refresh cho Admin mỗi 5 giây để giả lập real-time
+                if(!window.adminInterval) {
+                    window.adminInterval = setInterval(changeDate, 5000);
+                }
             } else {
-                renderStaffView(date, currentUser.role);
+                if(window.adminInterval) clearInterval(window.adminInterval);
+                renderStaffView(area);
             }
         }
 
-        // --- RENDER VIEW CHO NHÂN VIÊN ---
-        function renderStaffView(date, roleKey) {
-            const checklist = CHECKLIST_DATA[roleKey];
-            const savedData = loadData(date, roleKey);
-            const container = document.getElementById('contentArea');
+        // --- XỬ LÝ DỮ LIỆU ---
+        function getData(role) {
+            const key = `cl_${currentDate}_${role}`;
+            return JSON.parse(localStorage.getItem(key)) || { tasks: {}, submitted: false, submitTime: null };
+        }
 
-            const card = document.createElement('div');
-            card.className = 'checklist-card';
-            
+        function saveData(role, data) {
+            const key = `cl_${currentDate}_${role}`;
+            localStorage.setItem(key, JSON.stringify(data));
+            // Kích hoạt sự kiện storage cho các tab khác
+            window.dispatchEvent(new Event('storage'));
+        }
+
+        // --- GIAO DIỆN NHÂN VIÊN ---
+        function renderStaffView(container) {
+            const role = currentUser.role;
+            const config = TASKS[role];
+            const data = getData(role);
+            const isSubmitted = data.submitted;
+
             let html = `
-                <div class="card-header">
-                    <span>📝 ${checklist.title}</span>
-                    <span>Ngày: ${date}</span>
-                </div>
-                <ul class="task-list">
+                <div class="card">
+                    <div class="card-head">
+                        <strong>📋 Checklist: ${config.title}</strong>
+                        ${isSubmitted ? '<span style="color:green">✅ Đã gửi báo cáo</span>' : '<span style="color:#666">⏳ Đang làm việc</span>'}
+                    </div>
+                    <div id="taskList">
             `;
 
-            checklist.tasks.forEach((task, index) => {
-                const isChecked = savedData[index]?.done ? 'checked' : '';
-                const noteValue = savedData[index]?.note || '';
-                
+            config.items.forEach((item, idx) => {
+                const checked = data.tasks[idx]?.done ? 'checked' : '';
+                const val = data.tasks[idx]?.val || '';
+                const disabled = isSubmitted ? 'disabled' : ''; // Khóa nếu đã nộp
+
                 html += `
-                    <li class="task-item">
-                        <div class="task-header">
-                            <input type="checkbox" class="task-checkbox" 
-                                ${isChecked} 
-                                onchange="saveData('${date}', '${roleKey}', ${index}, 'done', this.checked)">
-                            <div class="task-content">
-                                <span class="task-time">${task.time}</span>
-                                <span class="task-desc">${task.desc}</span>
+                    <div class="task-item">
+                        <div class="task-row">
+                            <input type="checkbox" class="task-check" ${checked} ${disabled}
+                                onchange="updateTask(${idx}, 'done', this.checked)">
+                            <div>
+                                <span class="task-time">${item.t}</span>
+                                <span>${item.d}</span>
                             </div>
                         </div>
-                        <div class="task-input">
-                             <input type="text" class="input-data" 
-                                placeholder="${task.placeholder || 'Ghi chú thêm...'}" 
-                                value="${noteValue}"
-                                oninput="saveData('${date}', '${roleKey}', ${index}, 'note', this.value)">
-                        </div>
-                    </li>
+                        ${item.input ? `
+                            <input type="text" class="task-input" placeholder="Nhập số liệu..." value="${val}" ${disabled}
+                                oninput="updateTask(${idx}, 'val', this.value)">
+                        ` : ''}
+                    </div>
                 `;
             });
 
-            html += `</ul>`;
-            card.innerHTML = html;
-            container.appendChild(card);
+            html += `</div></div>`;
+
+            // Phần nút gửi
+            html += `
+                <div class="submit-area">
+                    ${isSubmitted 
+                        ? `<div class="submitted-alert" style="display:block">🎉 Bạn đã gửi báo cáo lúc <strong>${data.submitTime}</strong>. Admin đã nhận được.</div>`
+                        : `<button class="btn btn-submit" onclick="submitReport()">🚀 Gửi báo cáo cho Quản Lý</button>`
+                    }
+                </div>
+            `;
+
+            container.innerHTML = html;
         }
 
-        // --- RENDER VIEW CHO QUẢN LÝ ---
-        function renderManagerView(date) {
-            const container = document.getElementById('contentArea');
-            const grid = document.createElement('div');
-            grid.className = 'manager-grid';
+        function updateTask(idx, field, value) {
+            const data = getData(currentUser.role);
+            if (data.submitted) return; // Chặn sửa nếu đã nộp
+            
+            if (!data.tasks[idx]) data.tasks[idx] = {};
+            data.tasks[idx][field] = value;
+            saveData(currentUser.role, data);
+        }
 
-            // Lặp qua 4 role nhân viên
-            ['nam_np', 'nu_np', 'nam_xd', 'nu_xd'].forEach(roleKey => {
-                const checklist = CHECKLIST_DATA[roleKey];
-                const savedData = loadData(date, roleKey);
+        function submitReport() {
+            if(!confirm("Xác nhận gửi báo cáo? Sau khi gửi bạn sẽ không thể chỉnh sửa.")) return;
+            
+            const data = getData(currentUser.role);
+            data.submitted = true;
+            data.submitTime = new Date().toLocaleTimeString('vi-VN');
+            saveData(currentUser.role, data);
+            
+            changeDate(); // Render lại giao diện
+        }
+
+        // --- GIAO DIỆN ADMIN ---
+        function renderAdminView(container) {
+            const roles = ['nam_np', 'nu_np', 'nam_xd', 'nu_xd'];
+            let html = '<div class="monitor-grid">';
+
+            roles.forEach(role => {
+                const data = getData(role);
+                const config = TASKS[role];
                 
-                // Tính tiến độ
-                const totalTasks = checklist.tasks.length;
-                let completedTasks = 0;
-                checklist.tasks.forEach((_, idx) => {
-                    if (savedData[idx]?.done) completedTasks++;
-                });
-                const percent = Math.round((completedTasks / totalTasks) * 100);
-
-                const card = document.createElement('div');
-                card.className = 'checklist-card';
+                // Tính toán tiến độ
+                const total = config.items.length;
+                const done = Object.values(data.tasks).filter(t => t.done).length;
+                const percent = Math.round((done / total) * 100);
                 
-                let taskHtml = '';
-                checklist.tasks.forEach((task, index) => {
-                    const isDone = savedData[index]?.done;
-                    const note = savedData[index]?.note;
-                    
-                    // Chỉ hiển thị những task đã làm hoặc có ghi chú để gọn báo cáo
-                    // Hoặc hiển thị mờ nếu chưa làm
-                    const statusIcon = isDone ? '✅' : '⬜';
-                    const opacity = isDone ? '1' : '0.5';
-                    
-                    let noteHtml = note ? `<div style="margin-left: 25px; font-size: 0.9em; color: #2563eb; font-style: italic;">➥ ${note}</div>` : '';
+                // Trạng thái
+                const statusClass = data.submitted ? 'done' : 'pending';
+                const statusText = data.submitted 
+                    ? `<span style="color:var(--success)">✅ Đã nộp lúc ${data.submitTime}</span>` 
+                    : `<span style="color:var(--warning)">⏳ Đang làm... (${done}/${total})</span>`;
 
-                    taskHtml += `
-                        <li style="padding: 8px 15px; border-bottom: 1px solid #eee; opacity: ${opacity}">
-                            <div>${statusIcon} <strong>${task.time}</strong></div>
-                            <div style="margin-left: 25px;">${task.desc}</div>
-                            ${noteHtml}
-                        </li>
-                    `;
-                });
-
-                card.innerHTML = `
-                    <div class="card-header" style="flex-direction: column; gap: 5px;">
-                        <div style="display:flex; justify-content:space-between">
-                            <span>${checklist.title}</span>
-                            <span>${completedTasks}/${totalTasks}</span>
+                html += `
+                    <div class="monitor-card ${statusClass}">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <strong>${config.title}</strong>
+                            ${statusText}
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${percent}%"></div>
+                        
+                        <div style="height:6px; background:#e2e8f0; border-radius:3px; margin-bottom:10px;">
+                            <div style="height:100%; background:${data.submitted ? 'var(--success)' : 'var(--primary)'}; width:${percent}%"></div>
+                        </div>
+
+                        <div style="font-size:0.9rem; color:#475569; max-height: 150px; overflow-y:auto;">
+                            ${config.items.map((item, idx) => {
+                                const task = data.tasks[idx] || {};
+                                if (!task.done && !task.val) return ''; // Ẩn cái chưa làm để gọn
+                                return `
+                                    <div style="margin-bottom:4px;">
+                                        <span class="status-dot bg-green"></span>
+                                        ${item.t}: ${task.val ? `<b>${task.val}</b>` : 'Hoàn thành'}
+                                    </div>
+                                `;
+                            }).join('')}
+                            ${(done === 0) ? '<i>Chưa có hoạt động nào</i>' : ''}
                         </div>
                     </div>
-                    <ul class="task-list" style="max-height: 300px; overflow-y: auto;">
-                        ${taskHtml}
-                    </ul>
                 `;
-                grid.appendChild(card);
             });
 
-            container.appendChild(grid);
-        }
-
-        function updateProgressUI(role, data) {
-            // Hàm này có thể mở rộng để update real-time nếu cần
+            html += '</div>';
+            html += '<div style="text-align:center; margin-top:20px; color:#666; font-size:0.8rem;">Dữ liệu tự động cập nhật mỗi 5 giây...</div>';
+            container.innerHTML = html;
         }
 
         // Chạy khởi tạo
         init();
-
-        // Cho phép Enter để đăng nhập
-        document.getElementById('password').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') login();
-        });
-
     </script>
 </body>
 </html>
