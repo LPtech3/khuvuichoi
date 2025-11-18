@@ -3,18 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklist Từng Việc (Real-time)</title>
+    <title>Checklist Online (Google Sheets)</title>
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --success: #16a34a;
-            --text: #334155;
-            --border: #e2e8f0;
-        }
-
+        :root { --primary: #2563eb; --bg: #f8fafc; --success: #16a34a; --text: #334155; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg); min-height: 100vh; color: var(--text); font-size: 15px; }
+
+        /* LOADING OVERLAY */
+        #loader {
+            position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8);
+            display:none; justify-content:center; align-items:center; z-index: 2000; font-weight:bold; color: var(--primary);
+        }
 
         /* LOGIN */
         .login-wrap {
@@ -22,364 +21,269 @@
             background: linear-gradient(135deg, #3b82f6, #8b5cf6);
             display: flex; justify-content: center; align-items: center; z-index: 999;
         }
-        .login-box {
-            background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
-        }
-        .form-input {
-            width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 15px;
-        }
-        .btn-login {
-            width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
-        }
+        .login-box { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px; }
+        .btn-login { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; }
 
-        /* MAIN UI */
+        /* APP UI */
         .dashboard { max-width: 800px; margin: 0 auto; padding: 15px; display: none; }
-        .header {
-            background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        /* TASK ITEM STYLES */
-        .card { background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; }
-        .card-title { padding: 15px; background: #eff6ff; border-bottom: 1px solid var(--border); font-weight: bold; color: #1e40af; }
+        .header { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         
-        .task-item {
-            padding: 15px; border-bottom: 1px solid var(--border);
-            display: flex; flex-direction: column; gap: 10px;
-        }
-        .task-item:last-child { border-bottom: none; }
+        .card { background: white; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .card-title { padding: 15px; background: #eff6ff; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #1e40af; display: flex; justify-content: space-between; }
         
+        .task-item { padding: 15px; border-bottom: 1px solid #f1f5f9; }
         .task-main { display: flex; align-items: flex-start; gap: 12px; }
-        .task-chk { width: 20px; height: 20px; margin-top: 2px; cursor: pointer; }
-        .task-content { flex: 1; }
-        .task-time { color: var(--primary); font-weight: 700; font-size: 0.9rem; margin-right: 5px; }
+        .task-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-left: 32px; }
         
-        .task-footer {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-top: 5px; padding-left: 32px; /* align with text */
-        }
+        .inp-note { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; margin-right: 10px; }
+        .btn-send { padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-send:disabled { background: #94a3b8; }
+        .status-sent { color: var(--success); font-weight: 600; background: #dcfce7; padding: 5px 10px; border-radius: 20px; font-size: 0.85rem; }
         
-        .inp-note {
-            flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; margin-right: 10px;
-        }
-
-        /* BUTTONS */
-        .btn-send {
-            padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; 
-            cursor: pointer; font-size: 0.85rem; white-space: nowrap; transition: 0.2s;
-            display: flex; align-items: center; gap: 5px;
-        }
-        .btn-send:hover { background: #1d4ed8; }
-        .btn-send:disabled { background: #94a3b8; cursor: not-allowed; }
-
-        .status-sent {
-            color: var(--success); font-weight: 600; font-size: 0.85rem;
-            background: #dcfce7; padding: 5px 10px; border-radius: 20px;
-            display: flex; align-items: center; gap: 5px;
-        }
-
-        /* ADMIN MONITOR */
-        .monitor-row {
-            padding: 10px 15px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;
-        }
+        /* Admin View */
+        .monitor-row { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
         .monitor-row.done { background: #f0fdf4; }
-        .monitor-time { font-size: 0.8rem; color: #64748b; }
 
+        /* Sync Button */
+        .btn-sync { background: #e2e8f0; border:none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
+    <div id="loader">☁️ Đang đồng bộ dữ liệu...</div>
+
     <div id="loginScreen" class="login-wrap">
         <div class="login-box">
-            <h2 style="text-align:center; margin-bottom:20px; color:#1e293b;">🔐 Đăng Nhập</h2>
-            <input type="text" id="uName" class="form-input" placeholder="Username (admin, nam_np, nu_xd...)">
-            <input type="password" id="pWord" class="form-input" placeholder="Password" value="123">
-            <button class="btn-login" onclick="login()">Vào Hệ Thống</button>
-            <div style="margin-top:15px; font-size:12px; color:#666; text-align:center">
-                TK: admin, nam_np, nu_np, nam_xd, nu_xd (Pass: 123)
-            </div>
+            <h2 style="text-align:center; margin-bottom:20px;">☁️ Check-list Online</h2>
+            <input type="text" id="uName" class="form-input" placeholder="admin, nam_np, nu_np...">
+            <input type="password" id="pWord" class="form-input" value="123">
+            <button class="btn-login" onclick="login()">Đăng Nhập</button>
         </div>
     </div>
 
     <div id="dashboard" class="dashboard">
         <div class="header">
             <div>
-                <div style="font-weight:bold; font-size:1.1rem;" id="uiName">User</div>
-                <div style="font-size:0.85rem; color:#64748b;" id="uiRole">Role</div>
+                <div style="font-weight:bold" id="uiName">User</div>
+                <div style="font-size:0.8rem; color:#666" id="uiRole">...</div>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <input type="date" id="datePicker" style="padding:5px; border:1px solid #ccc; border-radius:5px;" onchange="changeDate()">
-                <button onclick="logout()" style="padding:6px 12px; border:1px solid #ddd; background:white; border-radius:5px; cursor:pointer">Thoát</button>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                <button class="btn-sync" onclick="syncData(true)">🔄 Làm mới</button>
+                <button onclick="location.reload()" style="padding:5px 10px; border:1px solid #ccc; border-radius:5px;">Thoát</button>
             </div>
         </div>
-
+        <div id="lastUpdateTxt" style="text-align: center; font-size: 0.8rem; color: #999; margin-bottom: 10px;"></div>
         <div id="contentArea"></div>
     </div>
 
     <script>
-        // --- DATA ---
-        const CHECKLISTS = {
-            nam_np: {
-                title: "Khu Nhà Phao (Nam)",
-                tasks: [
-                    { t:"15:30", d:"Có mặt, Check-in, Dọn xe" },
-                    { t:"16:00", d:"Dán ống, nối bơm, gỡ bạt nhà phao" },
-                    { t:"16:00", d:"Dọn hồ cá, bơm nước, thả cá" },
-                    { t:"Khi đầy", d:"Lau nhà hơi (ướt -> khô)" },
-                    { t:"17:30", d:"Treo đèn nhà phao + hồ cá" },
-                    { t:"18:30", d:"Nhặt rác xung quanh (giữ thùng tiền)" },
-                    { t:"20:00", d:"Xả nhà phao, gấp bạt, dọn hồ cá" },
-                    { t:"Cuối ca", d:"Chụp số nước báo Group", input: true },
-                    { t:"Cuối ca", d:"Tắt đèn, rút điện, phụ xe điện" },
-                    { t:"21:00", d:"Check-out (Chụp đồng hồ nước)", input: true }
-                ]
-            },
-            nu_np: {
-                title: "Khu Nhà Phao (Nữ)",
-                tasks: [
-                    { t:"15:30", d:"Có mặt, Check-in, Phụ dọn" },
-                    { t:"Đầu ca", d:"Nhặt rác, Kiểm kê nước đầu ca", input: true },
-                    { t:"18:00", d:"Đốt nhang muỗi" },
-                    { t:"18:30", d:"Nhặt rác, giữ thùng tiền" },
-                    { t:"20:00", d:"Dọn dẹp, kéo bạt, nhặt rác" },
-                    { t:"Cuối ca", d:"Kiểm kê nước cuối ca", input: true },
-                    { t:"Cuối ca", d:"Sạc đèn, bộ đàm" },
-                    { t:"21:00", d:"Check-out" }
-                ]
-            },
-            nam_xd: {
-                title: "Khu Xe Điện (Nam)",
-                tasks: [
-                    { t:"15:30", d:"Check-in, Dọn xe ra (trước 16:30)" },
-                    { t:"Chiều", d:"Đặt cọc phân luồng, giăng dây, nhạc" },
-                    { t:"Tối", d:"Bật đèn trung tâm" },
-                    { t:"18:00", d:"Đốt nhang muỗi" },
-                    { t:"18:30", d:"Nhặt rác, giữ thùng tiền" },
-                    { t:"20:00", d:"Dọn xe, dọn bạt về kho" },
-                    { t:"Cuối ca", d:"Sạc Pin xe, loa, bộ đàm" },
-                    { t:"21:00", d:"Check-out, trùm xe" }
-                ]
-            },
-            nu_xd: {
-                title: "Khu Xe Điện (Nữ)",
-                tasks: [
-                    { t:"16:00", d:"Check-in, Phụ dọn, Lau xe" },
-                    { t:"Đầu ca", d:"Kiểm tiền lẻ, máy in, bộ đàm" },
-                    { t:"Đầu ca", d:"Báo số vòng tay + Nước", input: true },
-                    { t:"18:00", d:"Đốt nhang muỗi" },
-                    { t:"18:30", d:"Nhặt rác, giữ thùng tiền" },
-                    { t:"20:00", d:"Dọn xe về kho" },
-                    { t:"Cuối ca", d:"Báo số vòng tay + Nước cuối ca", input: true },
-                    { t:"Cuối ca", d:"Sạc pin các thiết bị" },
-                    { t:"21:00", d:"Check-out" }
-                ]
-            }
-        };
+        // --- QUAN TRỌNG: DÁN LINK GOOGLE APPS SCRIPT VÀO DƯỚI ĐÂY ---
+        const API_URL = "https://script.google.com/macros/s/AKfycbyjFnYWoSyJwZtbe3Mhnnf9F0Fl7fwa295IVpxM32G3Q4bR9jYPwXQBc7sc1N1vOzzYHg/exec"; 
+        // Ví dụ: const API_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
 
+        const CHECKLISTS = {
+            nam_np: { title: "Khu Nhà Phao (Nam)", tasks: [
+                {t:"15:30", d:"Check-in, Dọn xe"}, {t:"16:00", d:"Dán ống, bơm, gỡ bạt"}, {t:"16:00", d:"Dọn hồ cá, bơm nước"},
+                {t:"Khi đầy", d:"Lau nhà hơi"}, {t:"17:30", d:"Treo đèn"}, {t:"18:30", d:"Nhặt rác"},
+                {t:"20:00", d:"Xả nhà phao, gấp bạt"}, {t:"Cuối ca", d:"Báo số nước", input:true},
+                {t:"Cuối ca", d:"Tắt đèn, rút điện"}, {t:"21:00", d:"Check-out", input:true}
+            ]},
+            nu_np: { title: "Khu Nhà Phao (Nữ)", tasks: [
+                {t:"15:30", d:"Check-in, Phụ dọn"}, {t:"Đầu ca", d:"Kiểm kê nước đầu ca", input:true},
+                {t:"18:00", d:"Đốt nhang muỗi"}, {t:"18:30", d:"Nhặt rác"}, {t:"20:00", d:"Dọn dẹp, kéo bạt"},
+                {t:"Cuối ca", d:"Kiểm kê nước cuối ca", input:true}, {t:"Cuối ca", d:"Sạc đèn"}, {t:"21:00", d:"Check-out"}
+            ]},
+            nam_xd: { title: "Khu Xe Điện (Nam)", tasks: [
+                {t:"15:30", d:"Check-in, Dọn xe"}, {t:"Chiều", d:"Giăng dây, nhạc"}, {t:"Tối", d:"Bật đèn"},
+                {t:"18:00", d:"Đốt nhang muỗi"}, {t:"18:30", d:"Nhặt rác"}, {t:"20:00", d:"Dọn xe về kho"},
+                {t:"Cuối ca", d:"Sạc Pin"}, {t:"21:00", d:"Check-out"}
+            ]},
+            nu_xd: { title: "Khu Xe Điện (Nữ)", tasks: [
+                {t:"16:00", d:"Check-in, Lau xe"}, {t:"Đầu ca", d:"Báo vòng tay + Nước", input:true},
+                {t:"18:00", d:"Đốt nhang muỗi"}, {t:"18:30", d:"Nhặt rác"}, {t:"20:00", d:"Dọn xe"},
+                {t:"Cuối ca", d:"Báo vòng tay + Nước", input:true}, {t:"Cuối ca", d:"Sạc pin"}, {t:"21:00", d:"Check-out"}
+            ]}
+        };
         const USERS = {
             admin: { name: "Quản Lý", role: "admin" },
-            nam_np: { name: "Nhân Viên Nam", role: "nam_np" },
-            nu_np: { name: "Nhân Viên Nữ", role: "nu_np" },
-            nam_xd: { name: "Nhân Viên Nam", role: "nam_xd" },
-            nu_xd: { name: "Nhân Viên Nữ", role: "nu_xd" }
+            nam_np: { name: "Nam Nhà Phao", role: "nam_np" }, nu_np: { name: "Nữ Nhà Phao", role: "nu_np" },
+            nam_xd: { name: "Nam Xe Điện", role: "nam_xd" }, nu_xd: { name: "Nữ Xe Điện", role: "nu_xd" }
         };
 
         let currentUser = null;
-        let currentDate = new Date().toISOString().split('T')[0];
-
-        // --- CORE FUNCTIONS ---
-        function init() {
-            document.getElementById('datePicker').value = currentDate;
-            // Lắng nghe sự kiện storage để cập nhật realtime
-            window.addEventListener('storage', () => {
-                if(currentUser) changeDate(); 
-            });
-        }
+        let globalData = {}; // Chứa dữ liệu tải về từ Google Sheet
 
         function login() {
             const u = document.getElementById('uName').value.trim();
             const p = document.getElementById('pWord').value;
-            if (USERS[u] && p === '123') {
+            if(USERS[u] && p==='123') {
+                if(API_URL.includes("DÁN_LINK")) { alert("⚠️ Bạn chưa dán link Google Apps Script vào code!"); return; }
                 currentUser = USERS[u];
                 currentUser.username = u;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('loginScreen').style.display='none';
+                document.getElementById('dashboard').style.display='block';
                 document.getElementById('uiName').innerText = currentUser.name;
-                document.getElementById('uiRole').innerText = CHECKLISTS[currentUser.role]?.title || "Admin Panel";
-                changeDate();
-            } else {
-                alert('Sai thông tin! Thử: admin / 123');
+                document.getElementById('uiRole').innerText = currentUser.role;
+                syncData(true); // Tải dữ liệu ngay khi đăng nhập
+            } else { alert("Sai thông tin!"); }
+        }
+
+        // --- KẾT NỐI GOOGLE SHEETS ---
+        async function syncData(showLoading) {
+            if(showLoading) document.getElementById('loader').style.display = 'flex';
+            
+            try {
+                const res = await fetch(API_URL); // GET Request để lấy data
+                const json = await res.json();
+                globalData = json; 
+                
+                document.getElementById('lastUpdateTxt').innerText = "Cập nhật: " + new Date().toLocaleTimeString();
+                renderView();
+            } catch(err) {
+                console.error(err);
+                alert("Lỗi kết nối mạng hoặc Link API sai!");
+            } finally {
+                document.getElementById('loader').style.display = 'none';
             }
         }
 
-        function logout() { location.reload(); }
+        async function sendDataToCloud(taskIndex, valStr, isDone) {
+            document.getElementById('loader').style.display = 'flex';
+            
+            // 1. Lấy dữ liệu hiện tại của Role này
+            let myRoleData = globalData[currentUser.role] || {};
+            
+            // 2. Cập nhật mục vừa sửa
+            if(!myRoleData[taskIndex]) myRoleData[taskIndex] = {};
+            myRoleData[taskIndex] = {
+                done: isDone,
+                val: valStr,
+                sent: true,
+                time: new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})
+            };
 
-        function getData(role) {
-            const key = `data_${currentDate}_${role}`;
-            return JSON.parse(localStorage.getItem(key)) || {};
+            // 3. Gửi lên Cloud (POST)
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Quan trọng với Apps Script
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: currentUser.role, data: myRoleData })
+                });
+                
+                // 4. Làm mới lại dữ liệu
+                await syncData(false);
+                
+            } catch(err) {
+                alert("Lỗi khi gửi: " + err);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
         }
 
-        function saveData(role, data) {
-            localStorage.setItem(`data_${currentDate}_${role}`, JSON.stringify(data));
-            // Dispatch event để các tab khác tự cập nhật
-            window.dispatchEvent(new Event('storage'));
-        }
-
-        function changeDate() {
-            currentDate = document.getElementById('datePicker').value;
+        function renderView() {
             const area = document.getElementById('contentArea');
             area.innerHTML = '';
             
-            if (currentUser.role === 'admin') {
+            if(currentUser.role === 'admin') {
                 renderAdmin(area);
-                if(!window.refreshInt) window.refreshInt = setInterval(changeDate, 3000);
             } else {
-                if(window.refreshInt) clearInterval(window.refreshInt);
                 renderStaff(area);
             }
         }
 
-        // --- STAFF VIEW ---
         function renderStaff(container) {
-            const role = currentUser.role;
-            const tasks = CHECKLISTS[role].tasks;
-            const savedData = getData(role);
+            const tasks = CHECKLISTS[currentUser.role].tasks;
+            const myData = globalData[currentUser.role] || {}; // Dữ liệu từ cloud
 
-            let html = `<div class="card"><div class="card-title">📝 Danh sách công việc ngày ${currentDate}</div><div>`;
-
+            let html = `<div class="card"><div class="card-title">📝 Việc cần làm hôm nay</div><div>`;
+            
             tasks.forEach((task, idx) => {
-                const taskData = savedData[idx] || {};
-                const isSent = taskData.sent === true;
+                const item = myData[idx] || {};
+                const isSent = item.sent === true;
                 
-                // Nếu đã gửi thì disable
-                const disabled = isSent ? 'disabled' : '';
-                const bgStyle = isSent ? 'background:#f0fdf4;' : '';
-
                 html += `
-                    <div class="task-item" style="${bgStyle}">
-                        <div class="task-main">
-                            <input type="checkbox" class="task-chk" 
-                                ${taskData.done ? 'checked' : ''} ${disabled}
-                                onchange="updateTemp(${idx}, 'done', this.checked)">
-                            <div class="task-content">
-                                <div><span class="task-time">${task.t}</span> ${task.d}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="task-footer">
-                            ${task.input ? `
-                                <input type="text" class="inp-note" placeholder="Nhập số liệu..." 
-                                    value="${taskData.val || ''}" ${disabled}
-                                    oninput="updateTemp(${idx}, 'val', this.value)">
-                            ` : '<div style="flex:1"></div>'}
-                            
-                            ${isSent 
-                                ? `<div class="status-sent">✅ Đã gửi lúc ${taskData.time}</div>`
-                                : `<button class="btn-send" onclick="submitTask(${idx})">➤ Gửi</button>`
-                            }
+                <div class="task-item" style="${isSent ? 'background:#f0fdf4' : ''}">
+                    <div class="task-main">
+                        <input type="checkbox" id="chk_${idx}" ${item.done?'checked':''} ${isSent?'disabled':''}>
+                        <div style="flex:1">
+                            <span style="color:#2563eb; font-weight:bold">${task.t}</span> ${task.d}
                         </div>
                     </div>
-                `;
+                    <div class="task-footer">
+                        ${task.input ? `<input type="text" id="inp_${idx}" class="inp-note" value="${item.val||''}" placeholder="Nhập số..." ${isSent?'disabled':''}>` : '<div style="flex:1"></div>'}
+                        
+                        ${isSent 
+                            ? `<span class="status-sent">✅ Đã gửi ${item.time}</span>` 
+                            : `<button class="btn-send" onclick="handleSend(${idx}, ${task.input?true:false})">➤ Gửi</button>`
+                        }
+                    </div>
+                </div>`;
             });
             html += `</div></div>`;
             container.innerHTML = html;
         }
 
-        // Cập nhật tạm thời (chưa gửi)
-        function updateTemp(idx, field, value) {
-            const data = getData(currentUser.role);
-            if (!data[idx]) data[idx] = {};
-            data[idx][field] = value;
-            // Lưu thầm lặng để không mất dữ liệu nếu f5, nhưng chưa tính là "Gửi"
-            localStorage.setItem(`data_${currentDate}_${currentUser.role}`, JSON.stringify(data));
-        }
-
-        // Gửi chính thức
-        function submitTask(idx) {
-            // Lấy dữ liệu mới nhất từ localStorage (do hàm updateTemp đã lưu)
-            const data = getData(currentUser.role);
-            if (!data[idx]) data[idx] = {};
+        function handleSend(idx, hasInput) {
+            const isDone = document.getElementById(`chk_${idx}`).checked;
+            const val = hasInput ? document.getElementById(`inp_${idx}`).value : "";
             
-            // Validate: Nhắc nhở nếu chưa check hoặc chưa nhập
-            const currentTaskDef = CHECKLISTS[currentUser.role].tasks[idx];
-            if (!data[idx].done && !data[idx].val) {
-                if(!confirm("Bạn chưa tích vào ô hoặc chưa nhập liệu. Vẫn muốn gửi?")) return;
+            if(!isDone && !val) {
+                if(!confirm("Chưa tích hoặc chưa nhập liệu. Gửi luôn?")) return;
             }
-
-            // Đánh dấu đã gửi
-            data[idx].sent = true;
-            data[idx].time = new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
-            
-            saveData(currentUser.role, data);
-            changeDate(); // Render lại để hiện nút xanh
+            sendDataToCloud(idx, val, isDone);
         }
 
-        // --- ADMIN VIEW ---
         function renderAdmin(container) {
             const roles = ['nam_np', 'nu_np', 'nam_xd', 'nu_xd'];
+            let html = `<div style="display:grid; gap:15px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">`;
             
-            let html = `<div style="display:grid; gap:20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">`;
-
-            roles.forEach(roleKey => {
-                const roleTitle = CHECKLISTS[roleKey].title;
-                const tasks = CHECKLISTS[roleKey].tasks;
-                const data = getData(roleKey);
+            roles.forEach(r => {
+                const roleTitle = CHECKLISTS[r].title;
+                const tasks = CHECKLISTS[r].tasks;
+                const roleData = globalData[r] || {};
                 
-                // Tính tiến độ
-                let sentCount = 0;
-                Object.values(data).forEach(d => { if(d.sent) sentCount++; });
-                const total = tasks.length;
-                const progress = Math.round((sentCount / total) * 100);
-
+                // Tính %
+                let count = 0;
+                Object.values(roleData).forEach(i => { if(i.sent) count++ });
+                const pct = Math.round((count/tasks.length)*100);
+                
                 html += `
-                    <div class="card">
-                        <div class="card-title" style="display:flex; justify-content:space-between;">
-                            <span>${roleTitle}</span>
-                            <span style="font-size:0.9rem; background:white; padding:2px 8px; border-radius:10px;">${progress}%</span>
-                        </div>
-                        <div style="height:5px; background:#f1f5f9; width:100%">
-                            <div style="height:100%; background:${progress==100 ? '#22c55e' : '#3b82f6'}; width:${progress}%"></div>
-                        </div>
-                        <div style="max-height:300px; overflow-y:auto;">
-                `;
-
-                tasks.forEach((task, idx) => {
-                    const item = data[idx] || {};
-                    const isSent = item.sent === true;
+                <div class="card">
+                    <div class="card-title">
+                        <span>${roleTitle}</span>
+                        <span style="font-size:0.8rem; background:#fff; color:#333; padding:2px 6px; border-radius:4px">${pct}%</span>
+                    </div>
+                    <div style="height:4px; background:#eee; width:100%"><div style="height:100%; background:${pct==100?'green':'blue'}; width:${pct}%"></div></div>
+                    <div style="max-height:250px; overflow-y:auto">`;
                     
-                    if (isSent) {
-                        html += `
-                            <div class="monitor-row done">
-                                <div>
-                                    <div style="font-weight:bold; font-size:0.85rem; color:#15803d">✓ ${task.t}</div>
-                                    <div style="font-size:0.8rem;">${task.d}</div>
-                                    ${item.val ? `<div style="color:#d97706; font-weight:bold; font-size:0.85rem">📝 SL: ${item.val}</div>` : ''}
-                                </div>
-                                <div class="monitor-time">${item.time}</div>
-                            </div>
-                        `;
+                tasks.forEach((t, i) => {
+                    const item = roleData[i] || {};
+                    if(item.sent) {
+                        html += `<div class="monitor-row done">
+                            <div><b style="color:green">✓</b> ${t.t} ${item.val ? `(SL: <b>${item.val}</b>)` : ''}</div>
+                            <div style="font-size:0.75rem; color:#666">${item.time}</div>
+                        </div>`;
                     } else {
-                        html += `
-                            <div class="monitor-row" style="opacity:0.5">
-                                <div style="font-size:0.85rem;">◯ ${task.t} - ${task.d}</div>
-                            </div>
-                        `;
+                        html += `<div class="monitor-row" style="opacity:0.5"><div>◯ ${t.t}</div></div>`;
                     }
                 });
                 html += `</div></div>`;
             });
             html += `</div>`;
-            
-            html += `<div style="text-align:center; color:#94a3b8; margin-top:20px; font-size:0.8rem">
-                Dữ liệu được cập nhật tự động theo thời gian thực (mỗi 3 giây)
-            </div>`;
-
             container.innerHTML = html;
         }
 
-        init();
+        // Tự động đồng bộ mỗi 10 giây cho Admin
+        setInterval(() => {
+            if(currentUser && currentUser.role === 'admin') syncData(false);
+        }, 10000);
+        
+        // Cho phép enter đăng nhập
+        document.getElementById('pWord').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') login();
+        });
     </script>
 </body>
 </html>
