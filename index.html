@@ -1,289 +1,603 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checklist Online (Google Sheets)</title>
-    <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; --success: #16a34a; --text: #334155; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); min-height: 100vh; color: var(--text); font-size: 15px; }
+import React, { useState, useEffect } from 'react';
+import { Users, LogOut, UserCheck, Clock, MapPin, Activity, Calendar, TrendingUp, Award, RefreshCw } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
-        /* LOADING OVERLAY */
-        #loader {
-            position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8);
-            display:none; justify-content:center; align-items:center; z-index: 2000; font-weight:bold; color: var(--primary);
-        }
+// ========== CẤU HÌNH SUPABASE ==========
+// QUAN TRỌNG: Thay thế bằng thông tin từ dự án Supabase của bạn
+const SUPABASE_URL = 'https://fjpgxvroomyiphhgnezo.supabase.co'; // Ví dụ: https://abcdefgh.supabase.co
+const SUPABASE_ANON_KEY = 'sb_publishable_lLMFT2OAjmU2bfp9Uq1RpQ_FzUa0mFi'; // Lấy từ Settings > API
 
-        /* LOGIN */
-        .login-wrap {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-            display: flex; justify-content: center; align-items: center; z-index: 999;
-        }
-        .login-box { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; }
-        .form-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 15px; }
-        .btn-login { width: 100%; padding: 10px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; }
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        /* APP UI */
-        .dashboard { max-width: 800px; margin: 0 auto; padding: 15px; display: none; }
-        .header { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .card { background: white; border-radius: 12px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .card-title { padding: 15px; background: #eff6ff; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #1e40af; display: flex; justify-content: space-between; }
-        
-        .task-item { padding: 15px; border-bottom: 1px solid #f1f5f9; }
-        .task-main { display: flex; align-items: flex-start; gap: 12px; }
-        .task-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-left: 32px; }
-        
-        .inp-note { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; margin-right: 10px; }
-        .btn-send { padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-send:disabled { background: #94a3b8; }
-        .status-sent { color: var(--success); font-weight: 600; background: #dcfce7; padding: 5px 10px; border-radius: 20px; font-size: 0.85rem; }
-        
-        /* Admin View */
-        .monitor-row { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-        .monitor-row.done { background: #f0fdf4; }
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [employees, setEmployees] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    online: 0,
+    avgProgress: 0,
+    todayTasks: 0
+  });
 
-        /* Sync Button */
-        .btn-sync { background: #e2e8f0; border:none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem; }
-    </style>
-</head>
-<body>
+  // Tài khoản demo
+  const accounts = {
+    admin: { password: 'admin123', role: 'admin', name: 'Quản trị viên Hệ thống' },
+    manager: { password: 'manager123', role: 'manager', name: 'Nguyễn Văn Quản lý' },
+    user1: { password: 'user123', role: 'employee', name: 'Trần Thị Nhân viên' }
+  };
 
-    <div id="loader">☁️ Đang đồng bộ dữ liệu...</div>
+  useEffect(() => {
+    if (currentUser) {
+      loadEmployeeData();
+    }
+  }, [currentUser]);
 
-    <div id="loginScreen" class="login-wrap">
-        <div class="login-box">
-            <h2 style="text-align:center; margin-bottom:20px;">☁️ Check-list Online</h2>
-            <input type="text" id="uName" class="form-input" placeholder="admin, nam_np, nu_np...">
-            <input type="password" id="pWord" class="form-input" value="123">
-            <button class="btn-login" onclick="login()">Đăng Nhập</button>
-        </div>
-    </div>
+  const loadEmployeeData = async () => {
+    setLoading(true);
+    try {
+      // Kiểm tra kết nối Supabase
+      if (SUPABASE_URL.includes('your-project') || SUPABASE_ANON_KEY.includes('your-anon')) {
+        setError('⚠️ Vui lòng cấu hình SUPABASE_URL và SUPABASE_ANON_KEY trong code!');
+        setLoading(false);
+        return;
+      }
 
-    <div id="dashboard" class="dashboard">
-        <div class="header">
+      // Lấy dữ liệu từ Supabase
+      const { data, error: fetchError } = await supabase
+        .from('employees')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (fetchError) {
+        console.error('Supabase error:', fetchError);
+        // Nếu lỗi, sử dụng dữ liệu mẫu
+        loadMockData();
+      } else if (data && data.length > 0) {
+        setEmployees(data);
+        calculateStats(data);
+        setLastUpdate(new Date().toLocaleTimeString('vi-VN'));
+      } else {
+        // Nếu chưa có dữ liệu, tạo dữ liệu mẫu
+        await initializeSampleData();
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      loadMockData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMockData = () => {
+    const mockData = [
+      {
+        id: 1,
+        name: 'Nguyễn Văn An',
+        position: 'Trưởng phòng Kinh doanh',
+        department: 'Kinh doanh',
+        status: 'online',
+        check_in: '08:15',
+        check_out: '--:--',
+        location: 'Văn phòng HCM - Tầng 5',
+        task_progress: 85,
+        tasks_completed: 12,
+        tasks_total: 15,
+        email: 'nguyenvanan@company.com',
+        phone: '0901234567',
+        work_hours: '8h 30m',
+        performance: 'Xuất sắc'
+      },
+      {
+        id: 2,
+        name: 'Trần Thị Bích',
+        position: 'Chuyên viên Marketing',
+        department: 'Marketing',
+        status: 'online',
+        check_in: '08:30',
+        check_out: '--:--',
+        location: 'Làm việc từ xa - Hà Nội',
+        task_progress: 72,
+        tasks_completed: 8,
+        tasks_total: 11,
+        email: 'tranthibich@company.com',
+        phone: '0912345678',
+        work_hours: '8h 15m',
+        performance: 'Tốt'
+      },
+      {
+        id: 3,
+        name: 'Lê Văn Cường',
+        position: 'Kỹ sư Phần mềm Senior',
+        department: 'IT',
+        status: 'online',
+        check_in: '08:00',
+        check_out: '--:--',
+        location: 'Văn phòng HCM - Tầng 3',
+        task_progress: 95,
+        tasks_completed: 19,
+        tasks_total: 20,
+        email: 'levancuong@company.com',
+        phone: '0923456789',
+        work_hours: '8h 45m',
+        performance: 'Xuất sắc'
+      },
+      {
+        id: 4,
+        name: 'Phạm Thị Dung',
+        position: 'Nhân viên Nhân sự',
+        department: 'Nhân sự',
+        status: 'offline',
+        check_in: '09:00',
+        check_out: '17:30',
+        location: 'Văn phòng HCM - Tầng 2',
+        task_progress: 60,
+        tasks_completed: 6,
+        tasks_total: 10,
+        email: 'phamthidung@company.com',
+        phone: '0934567890',
+        work_hours: '8h 30m',
+        performance: 'Trung bình'
+      },
+      {
+        id: 5,
+        name: 'Hoàng Văn Em',
+        position: 'Kế toán trưởng',
+        department: 'Kế toán',
+        status: 'online',
+        check_in: '08:20',
+        check_out: '--:--',
+        location: 'Văn phòng HCM - Tầng 4',
+        task_progress: 78,
+        tasks_completed: 14,
+        tasks_total: 18,
+        email: 'hoangvanem@company.com',
+        phone: '0945678901',
+        work_hours: '8h 25m',
+        performance: 'Tốt'
+      },
+      {
+        id: 6,
+        name: 'Vũ Thị Phương',
+        position: 'Designer UI/UX',
+        department: 'Sản phẩm',
+        status: 'online',
+        check_in: '09:15',
+        check_out: '--:--',
+        location: 'Làm việc từ xa - Đà Nẵng',
+        task_progress: 88,
+        tasks_completed: 15,
+        tasks_total: 17,
+        email: 'vuthiphuong@company.com',
+        phone: '0956789012',
+        work_hours: '7h 30m',
+        performance: 'Xuất sắc'
+      }
+    ];
+
+    setEmployees(mockData);
+    calculateStats(mockData);
+    setLastUpdate(new Date().toLocaleTimeString('vi-VN'));
+  };
+
+  const initializeSampleData = async () => {
+    const sampleData = [
+      {
+        name: 'Nguyễn Văn An',
+        position: 'Trưởng phòng Kinh doanh',
+        department: 'Kinh doanh',
+        status: 'online',
+        check_in: '08:15',
+        check_out: null,
+        location: 'Văn phòng HCM - Tầng 5',
+        task_progress: 85,
+        tasks_completed: 12,
+        tasks_total: 15,
+        email: 'nguyenvanan@company.com',
+        phone: '0901234567',
+        work_hours: '8h 30m',
+        performance: 'Xuất sắc'
+      },
+      {
+        name: 'Trần Thị Bích',
+        position: 'Chuyên viên Marketing',
+        department: 'Marketing',
+        status: 'online',
+        check_in: '08:30',
+        check_out: null,
+        location: 'Làm việc từ xa - Hà Nội',
+        task_progress: 72,
+        tasks_completed: 8,
+        tasks_total: 11,
+        email: 'tranthibich@company.com',
+        phone: '0912345678',
+        work_hours: '8h 15m',
+        performance: 'Tốt'
+      }
+    ];
+
+    const { data, error } = await supabase
+      .from('employees')
+      .insert(sampleData)
+      .select();
+
+    if (error) {
+      console.error('Error inserting sample data:', error);
+      loadMockData();
+    } else {
+      setEmployees(data);
+      calculateStats(data);
+    }
+  };
+
+  const calculateStats = (data) => {
+    const online = data.filter(e => e.status === 'online').length;
+    const avgProgress = Math.round(
+      data.reduce((acc, e) => acc + e.task_progress, 0) / data.length
+    );
+    const todayTasks = data.reduce((acc, e) => acc + e.tasks_completed, 0);
+
+    setStats({
+      total: data.length,
+      online: online,
+      avgProgress: avgProgress,
+      todayTasks: todayTasks
+    });
+  };
+
+  const handleLogin = () => {
+    setError('');
+
+    const account = accounts[loginForm.username];
+
+    if (!account) {
+      setError('Tên đăng nhập không tồn tại');
+      return;
+    }
+
+    if (account.password !== loginForm.password) {
+      setError('Mật khẩu không chính xác');
+      return;
+    }
+
+    setCurrentUser({
+      username: loginForm.username,
+      role: account.role,
+      name: account.name
+    });
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    setLoginForm({ username: '', password: '' });
+    setEmployees([]);
+    setStats({ total: 0, online: 0, avgProgress: 0, todayTasks: 0 });
+  };
+
+  const handleRefresh = () => {
+    if (currentUser) {
+      loadEmployeeData();
+    }
+  };
+
+  const getPerformanceBadge = (performance) => {
+    const badges = {
+      'Xuất sắc': 'bg-green-100 text-green-700',
+      'Tốt': 'bg-blue-100 text-blue-700',
+      'Trung bình': 'bg-yellow-100 text-yellow-700',
+      'Cần cải thiện': 'bg-red-100 text-red-700'
+    };
+    return badges[performance] || 'bg-gray-100 text-gray-700';
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
+  // Màn hình đăng nhập
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-700 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="inline-block p-4 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+              <Users className="w-14 h-14 text-white" />
+            </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Đăng nhập hệ thống</h1>
+            <p className="text-gray-600">Quản lý nhân viên với Supabase</p>
+          </div>
+
+          <div className="space-y-5">
             <div>
-                <div style="font-weight:bold" id="uiName">User</div>
-                <div style="font-size:0.8rem; color:#666" id="uiRole">...</div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tên đăng nhập
+              </label>
+              <input
+                type="text"
+                value={loginForm.username}
+                onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                onKeyPress={handleKeyPress}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                placeholder="Nhập tên đăng nhập"
+              />
             </div>
-            <div style="display: flex; gap: 5px; align-items: center;">
-                <button class="btn-sync" onclick="syncData(true)">🔄 Làm mới</button>
-                <button onclick="location.reload()" style="padding:5px 10px; border:1px solid #ccc; border-radius:5px;">Thoát</button>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Mật khẩu
+              </label>
+              <input
+                type="password"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                onKeyPress={handleKeyPress}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                placeholder="Nhập mật khẩu"
+              />
             </div>
+
+            {error && (
+              <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center">
+                <span className="mr-2">⚠️</span>
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleLogin}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3.5 rounded-xl font-semibold hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              Đăng nhập
+            </button>
+          </div>
+
+          <div className="mt-6 p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+            <p className="text-sm text-gray-700 font-semibold mb-3 flex items-center">
+              <span className="mr-2">🔑</span>
+              Tài khoản demo
+            </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">👑 <strong>Admin:</strong></span>
+                <code className="bg-white px-3 py-1 rounded-lg text-purple-600 font-mono">admin / admin123</code>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">👔 <strong>Manager:</strong></span>
+                <code className="bg-white px-3 py-1 rounded-lg text-blue-600 font-mono">manager / manager123</code>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">👤 <strong>User:</strong></span>
+                <code className="bg-white px-3 py-1 rounded-lg text-green-600 font-mono">user1 / user123</code>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <p className="text-xs text-blue-800">
+              ☁️ <strong>Supabase:</strong> Cấu hình SUPABASE_URL và SUPABASE_ANON_KEY trong code
+            </p>
+          </div>
         </div>
-        <div id="lastUpdateTxt" style="text-align: center; font-size: 0.8rem; color: #999; margin-bottom: 10px;"></div>
-        <div id="contentArea"></div>
-    </div>
+      </div>
+    );
+  }
 
-    <script>
-        // --- QUAN TRỌNG: DÁN LINK GOOGLE APPS SCRIPT VÀO DƯỚI ĐÂY ---
-        const API_URL = "https://script.google.com/macros/s/AKfycbz8ZlBPwxCQWn-1PzsEVVWvM8LfS4z-W946E8E6Q8ndz0C50vsRVcOfrhT1_Ocx-t61Rg/exec"; 
-        // Ví dụ: const API_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+  // Màn hình quản lý
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white bg-opacity-80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <RefreshCw className="w-12 h-12 text-purple-600 animate-spin mx-auto mb-2" />
+            <p className="text-gray-700 font-semibold">☁️ Đang đồng bộ dữ liệu...</p>
+          </div>
+        </div>
+      )}
 
-        const CHECKLISTS = {
-            nam_np: { title: "Khu Nhà Phao (Nam)", tasks: [
-                {t:"15:30", d:"Check-in, Dọn xe"}, {t:"16:00", d:"Dán ống, bơm, gỡ bạt"}, {t:"16:00", d:"Dọn hồ cá, bơm nước"},
-                {t:"Khi đầy", d:"Lau nhà hơi"}, {t:"17:30", d:"Treo đèn"}, {t:"18:30", d:"Nhặt rác"},
-                {t:"20:00", d:"Xả nhà phao, gấp bạt"}, {t:"Cuối ca", d:"Báo số nước", input:true},
-                {t:"Cuối ca", d:"Tắt đèn, rút điện"}, {t:"21:00", d:"Check-out", input:true}
-            ]},
-            nu_np: { title: "Khu Nhà Phao (Nữ)", tasks: [
-                {t:"15:30", d:"Check-in, Phụ dọn"}, {t:"Đầu ca", d:"Kiểm kê nước đầu ca", input:true},
-                {t:"18:00", d:"Đốt nhang muỗi"}, {t:"18:30", d:"Nhặt rác"}, {t:"20:00", d:"Dọn dẹp, kéo bạt"},
-                {t:"Cuối ca", d:"Kiểm kê nước cuối ca", input:true}, {t:"Cuối ca", d:"Sạc đèn"}, {t:"21:00", d:"Check-out"}
-            ]},
-            nam_xd: { title: "Khu Xe Điện (Nam)", tasks: [
-                {t:"15:30", d:"Check-in, Dọn xe"}, {t:"Chiều", d:"Giăng dây, nhạc"}, {t:"Tối", d:"Bật đèn"},
-                {t:"18:00", d:"Đốt nhang muỗi"}, {t:"18:30", d:"Nhặt rác"}, {t:"20:00", d:"Dọn xe về kho"},
-                {t:"Cuối ca", d:"Sạc Pin"}, {t:"21:00", d:"Check-out"}
-            ]},
-            nu_xd: { title: "Khu Xe Điện (Nữ)", tasks: [
-                {t:"16:00", d:"Check-in, Lau xe"}, {t:"Đầu ca", d:"Báo vòng tay + Nước", input:true},
-                {t:"18:00", d:"Đốt nhang muỗi"}, {t:"18:30", d:"Nhặt rác"}, {t:"20:00", d:"Dọn xe"},
-                {t:"Cuối ca", d:"Báo vòng tay + Nước", input:true}, {t:"Cuối ca", d:"Sạc pin"}, {t:"21:00", d:"Check-out"}
-            ]}
-        };
-        const USERS = {
-            admin: { name: "Quản Lý", role: "admin" },
-            nam_np: { name: "Nam Nhà Phao", role: "nam_np" }, nu_np: { name: "Nữ Nhà Phao", role: "nu_np" },
-            nam_xd: { name: "Nam Xe Điện", role: "nam_xd" }, nu_xd: { name: "Nữ Xe Điện", role: "nu_xd" }
-        };
+      {/* Header */}
+      <div className="bg-white shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg">
+                <Users className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">Hệ thống Quản lý Nhân viên</h1>
+                <p className="text-sm text-gray-500 flex items-center mt-1">
+                  <Calendar className="w-3.5 h-3.5 mr-1" />
+                  Thứ 7, 22 tháng 11, 2025
+                  {lastUpdate && <span className="ml-2 text-xs">• Cập nhật: {lastUpdate}</span>}
+                </p>
+              </div>
+            </div>
 
-        let currentUser = null;
-        let globalData = {}; // Chứa dữ liệu tải về từ Google Sheet
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md hover:shadow-lg disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                <span className="font-semibold">Làm mới</span>
+              </button>
+              
+              <div className="text-right bg-gray-50 px-4 py-2 rounded-xl">
+                <p className="text-sm font-bold text-gray-800">{currentUser.name}</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {currentUser.role === 'admin' ? '👑 Quản trị viên' :
+                   currentUser.role === 'manager' ? '👔 Quản lý' : '👤 Nhân viên'}
+                </p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-5 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="font-semibold">Đăng xuất</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        function login() {
-            const u = document.getElementById('uName').value.trim();
-            const p = document.getElementById('pWord').value;
-            if(USERS[u] && p==='123') {
-                if(API_URL.includes("DÁN_LINK")) { alert("⚠️ Bạn chưa dán link Google Apps Script vào code!"); return; }
-                currentUser = USERS[u];
-                currentUser.username = u;
-                document.getElementById('loginScreen').style.display='none';
-                document.getElementById('dashboard').style.display='block';
-                document.getElementById('uiName').innerText = currentUser.name;
-                document.getElementById('uiRole').innerText = currentUser.role;
-                syncData(true); // Tải dữ liệu ngay khi đăng nhập
-            } else { alert("Sai thông tin!"); }
-        }
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Thống kê tổng quan */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Tổng nhân viên</p>
+                <p className="text-4xl font-bold text-gray-800">{stats.total}</p>
+                <p className="text-xs text-gray-500 mt-2">👥 Toàn công ty</p>
+              </div>
+              <div className="p-4 bg-blue-100 rounded-2xl">
+                <Users className="w-8 h-8 text-blue-600" />
+              </div>
+            </div>
+          </div>
 
-        // --- KẾT NỐI GOOGLE SHEETS ---
-        async function syncData(showLoading) {
-            if(showLoading) document.getElementById('loader').style.display = 'flex';
-            
-            try {
-                const res = await fetch(API_URL); // GET Request để lấy data
-                const json = await res.json();
-                globalData = json; 
-                
-                document.getElementById('lastUpdateTxt').innerText = "Cập nhật: " + new Date().toLocaleTimeString();
-                renderView();
-            } catch(err) {
-                console.error(err);
-                alert("Lỗi kết nối mạng hoặc Link API sai!");
-            } finally {
-                document.getElementById('loader').style.display = 'none';
-            }
-        }
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Đang làm việc</p>
+                <p className="text-4xl font-bold text-green-600">{stats.online}</p>
+                <p className="text-xs text-gray-500 mt-2">🟢 Online hiện tại</p>
+              </div>
+              <div className="p-4 bg-green-100 rounded-2xl">
+                <UserCheck className="w-8 h-8 text-green-600" />
+              </div>
+            </div>
+          </div>
 
-        async function sendDataToCloud(taskIndex, valStr, isDone) {
-            document.getElementById('loader').style.display = 'flex';
-            
-            // 1. Lấy dữ liệu hiện tại của Role này
-            let myRoleData = globalData[currentUser.role] || {};
-            
-            // 2. Cập nhật mục vừa sửa
-            if(!myRoleData[taskIndex]) myRoleData[taskIndex] = {};
-            myRoleData[taskIndex] = {
-                done: isDone,
-                val: valStr,
-                sent: true,
-                time: new Date().toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})
-            };
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-purple-500 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Tiến độ TB</p>
+                <p className="text-4xl font-bold text-purple-600">{stats.avgProgress}%</p>
+                <p className="text-xs text-gray-500 mt-2">📊 Hiệu suất chung</p>
+              </div>
+              <div className="p-4 bg-purple-100 rounded-2xl">
+                <Activity className="w-8 h-8 text-purple-600" />
+              </div>
+            </div>
+          </div>
 
-            // 3. Gửi lên Cloud (POST)
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // Quan trọng với Apps Script
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role: currentUser.role, data: myRoleData })
-                });
-                
-                // 4. Làm mới lại dữ liệu
-                await syncData(false);
-                
-            } catch(err) {
-                alert("Lỗi khi gửi: " + err);
-            } finally {
-                document.getElementById('loader').style.display = 'none';
-            }
-        }
+          <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-orange-500 hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Công việc hôm nay</p>
+                <p className="text-4xl font-bold text-orange-600">{stats.todayTasks}</p>
+                <p className="text-xs text-gray-500 mt-2">✅ Đã hoàn thành</p>
+              </div>
+              <div className="p-4 bg-orange-100 rounded-2xl">
+                <TrendingUp className="w-8 h-8 text-orange-600" />
+              </div>
+            </div>
+          </div>
+        </div>
 
-        function renderView() {
-            const area = document.getElementById('contentArea');
-            area.innerHTML = '';
-            
-            if(currentUser.role === 'admin') {
-                renderAdmin(area);
-            } else {
-                renderStaff(area);
-            }
-        }
+        {/* Danh sách nhân viên */}
+        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+          <div className="px-6 py-5 bg-gradient-to-r from-purple-600 to-indigo-600">
+            <h2 className="text-2xl font-bold text-white flex items-center">
+              <Award className="w-6 h-6 mr-2" />
+              Danh sách nhân viên chi tiết
+            </h2>
+            <p className="text-purple-100 text-sm mt-1">Dữ liệu đồng bộ từ Supabase Cloud</p>
+          </div>
 
-        function renderStaff(container) {
-            const tasks = CHECKLISTS[currentUser.role].tasks;
-            const myData = globalData[currentUser.role] || {}; // Dữ liệu từ cloud
-
-            let html = `<div class="card"><div class="card-title">📝 Việc cần làm hôm nay</div><div>`;
-            
-            tasks.forEach((task, idx) => {
-                const item = myData[idx] || {};
-                const isSent = item.sent === true;
-                
-                html += `
-                <div class="task-item" style="${isSent ? 'background:#f0fdf4' : ''}">
-                    <div class="task-main">
-                        <input type="checkbox" id="chk_${idx}" ${item.done?'checked':''} ${isSent?'disabled':''}>
-                        <div style="flex:1">
-                            <span style="color:#2563eb; font-weight:bold">${task.t}</span> ${task.d}
+          <div className="divide-y divide-gray-200">
+            {employees.length === 0 ? (
+              <div className="p-8 text-center text-gray-500">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <p className="font-semibold">Chưa có dữ liệu nhân viên</p>
+                <p className="text-sm mt-2">Vui lòng kiểm tra kết nối Supabase</p>
+              </div>
+            ) : (
+              employees.map((employee) => (
+                <div key={employee.id} className="p-6 hover:bg-gray-50 transition-all">
+                  <div className="flex items-start justify-between flex-wrap lg:flex-nowrap gap-4">
+                    {/* Thông tin nhân viên */}
+                    <div className="flex items-start space-x-4 flex-1 min-w-0">
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-400 via-indigo-500 to-blue-500 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg flex-shrink-0">
+                        {employee.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-2 flex-wrap">
+                          <h3 className="text-lg font-bold text-gray-800">{employee.name}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${getPerformanceBadge(employee.performance)}`}>
+                            {employee.performance}
+                          </span>
                         </div>
-                    </div>
-                    <div class="task-footer">
-                        ${task.input ? `<input type="text" id="inp_${idx}" class="inp-note" value="${item.val||''}" placeholder="Nhập số..." ${isSent?'disabled':''}>` : '<div style="flex:1"></div>'}
-                        
-                        ${isSent 
-                            ? `<span class="status-sent">✅ Đã gửi ${item.time}</span>` 
-                            : `<button class="btn-send" onclick="handleSend(${idx}, ${task.input?true:false})">➤ Gửi</button>`
-                        }
-                    </div>
-                </div>`;
-            });
-            html += `</div></div>`;
-            container.innerHTML = html;
-        }
+                        <p className="text-sm text-gray-600 font-medium mb-1">{employee.position}</p>
+                        <p className="text-xs text-gray-500 mb-3 break-all">📧 {employee.email} • 📱 {employee.phone}</p>
 
-        function handleSend(idx, hasInput) {
-            const isDone = document.getElementById(`chk_${idx}`).checked;
-            const val = hasInput ? document.getElementById(`inp_${idx}`).value : "";
-            
-            if(!isDone && !val) {
-                if(!confirm("Chưa tích hoặc chưa nhập liệu. Gửi luôn?")) return;
-            }
-            sendDataToCloud(idx, val, isDone);
-        }
+                        {/* Thông tin chi tiết */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-3">
+                          <div className="flex items-center space-x-2">
+                            <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-gray-500">Check-in</p>
+                              <p className="text-sm font-semibold text-gray-800">{employee.check_in}</p>
+                            </div>
+                          </div>
 
-        function renderAdmin(container) {
-            const roles = ['nam_np', 'nu_np', 'nam_xd', 'nu_xd'];
-            let html = `<div style="display:grid; gap:15px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">`;
-            
-            roles.forEach(r => {
-                const roleTitle = CHECKLISTS[r].title;
-                const tasks = CHECKLISTS[r].tasks;
-                const roleData = globalData[r] || {};
-                
-                // Tính %
-                let count = 0;
-                Object.values(roleData).forEach(i => { if(i.sent) count++ });
-                const pct = Math.round((count/tasks.length)*100);
-                
-                html += `
-                <div class="card">
-                    <div class="card-title">
-                        <span>${roleTitle}</span>
-                        <span style="font-size:0.8rem; background:#fff; color:#333; padding:2px 6px; border-radius:4px">${pct}%</span>
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-gray-500">Vị trí</p>
+                              <p className="text-sm font-semibold text-gray-800 truncate">{employee.location}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Activity className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-xs text-gray-500">Giờ làm</p>
+                              <p className="text-sm font-semibold text-gray-800">{employee.work_hours}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold flex items-center ${
+                              employee.status === 'online'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {employee.status === 'online' ? '🟢 Online' : '⚫ Offline'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div style="height:4px; background:#eee; width:100%"><div style="height:100%; background:${pct==100?'green':'blue'}; width:${pct}%"></div></div>
-                    <div style="max-height:250px; overflow-y:auto">`;
-                    
-                tasks.forEach((t, i) => {
-                    const item = roleData[i] || {};
-                    if(item.sent) {
-                        html += `<div class="monitor-row done">
-                            <div><b style="color:green">✓</b> ${t.t} ${item.val ? `(SL: <b>${item.val}</b>)` : ''}</div>
-                            <div style="font-size:0.75rem; color:#666">${item.time}</div>
-                        </div>`;
-                    } else {
-                        html += `<div class="monitor-row" style="opacity:0.5"><div>◯ ${t.t}</div></div>`;
-                    }
-                });
-                html += `</div></div>`;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-        }
 
-        // Tự động đồng bộ mỗi 10 giây cho Admin
-        setInterval(() => {
-            if(currentUser && currentUser.role === 'admin') syncData(false);
-        }, 10000);
-        
-        // Cho phép enter đăng nhập
-        document.getElementById('pWord').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') login();
-        });
-    </script>
-</body>
-</html>
+                    {/* Tiến độ công việc */}
+                    <div className="w-full lg:w-72 lg:ml-6">
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold text-gray-700">Tiến độ công việc</span>
+                          <span className="text-lg font-bold text-purple-600">{employee.task_progress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
+                          <div
+                            className="bg-gradient-to-r from-purple-500 to-indigo-600 h-3 rounded-full transition-all shadow-sm"
+                            style={{ width: `${employee.task_progress}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600">
+                            ✅ Hoàn thành: <strong>{employee.tasks_completed}/{employee.tasks_total}</strong>
+                          </span>
+                          <span className="text-gray-500">
+                            🔄 Còn lại: <strong>{employee.tasks_total - employee.tasks_completed}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
